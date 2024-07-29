@@ -42,37 +42,17 @@ void IRC2SQL::CheckTables()
 	}
 	else if (GeoIPDB.equals_ci("city"))
 	{
-		if (!this->HasTable(prefix + "geoip_city_blocks"))
+		if (!this->HasTable(prefix + "geoip_city"))
 		{
-			query = "CREATE TABLE `" + prefix + "geoip_city_blocks` ("
+			query = "CREATE TABLE `" + prefix + "geoip_city` ("
 				"`start` INT UNSIGNED NOT NULL,"
 				"`end` INT UNSIGNED NOT NULL,"
-				"`locId` INT UNSIGNED NOT NULL,"
+				"`countrycode` varchar(2),"
+				"`countryname` varchar(50),"
+            "`regionname` varchar(50),"
+				"`cityname` varchar(50),"
 				"PRIMARY KEY `end` (`end`),"
 				"KEY `start` (`start`)"
-				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
-			this->RunQuery(query);
-		}
-		if (!this->HasTable(prefix + "geoip_city_location"))
-		{
-			query = "CREATE TABLE `" + prefix + "geoip_city_location` ("
-				"`locId` INT UNSIGNED NOT NULL,"
-				"`country` CHAR(2) NOT NULL,"
-				"`region` CHAR(2) NOT NULL,"
-				"`city` VARCHAR(50),"
-				"`latitude` FLOAT,"
-				"`longitude` FLOAT,"
-				"`areaCode` INT,"
-				"PRIMARY KEY (`locId`)"
-				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
-			this->RunQuery(query);
-		}
-		if (!this->HasTable(prefix + "geoip_city_region"))
-		{	query = "CREATE TABLE `" + prefix + "geoip_city_region` ("
-				"`country` CHAR(2) NOT NULL,"
-				"`region` CHAR(2) NOT NULL,"
-				"`regionname` VARCHAR(100) NOT NULL,"
-				"PRIMARY KEY (`country`,`region`)"
 				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
 			this->RunQuery(query);
 		}
@@ -180,20 +160,17 @@ void IRC2SQL::CheckTables()
 					"WHERE u.nick = nick_; ";
 	else if (GeoIPDB.equals_ci("city"))
 		geoquery = "UPDATE `" + prefix + "user` as u "
-					"JOIN ( SELECT * FROM `" + prefix + "geoip_city_location` "
-						"WHERE `locID` = ( SELECT `locID` "
-								"FROM `" + prefix + "geoip_city_blocks` "
-								"WHERE INET_ATON(ip_) <= `end` "
+					"JOIN ( SELECT `locId`, `countrycode`, `countryname` "
+               "`regionname`, `cityname` FROM `" + prefix + "geoip_city` "
+						"WHERE INET_ATON(ip_) <= `end` "
 								"AND `start` <= INET_ATON(ip_) "
 								"ORDER BY `end` ASC LIMIT 1 ) "
 						") as l "
-					"SET u.geocode = l.country, "
-					    "u.geocity = l.city, "
-					    "u.locID = l.locID, "
-					    "u.georegion = ( SELECT `regionname` "
-								"FROM `" + prefix + "geoip_city_region` "
-								"WHERE `country` = l.country "
-								"AND `region` = l.region )"
+					"SET u.geocode = l.countrycode, "
+                   "u.geocountry = c.countryname "
+                   "u.georegion = l.regionname, "
+					    "u.geocity = l.cityname, "
+					    "u.locID = l.locID "
 					"WHERE u.nick = nick_;";
 
 	query = "CREATE PROCEDURE `" + prefix + "UserConnect`"
